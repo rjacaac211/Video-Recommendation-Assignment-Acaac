@@ -13,38 +13,34 @@ class ContentBasedRecommender:
             print("Posts DataFrame is empty. Skipping data preparation.")
             self.title_tfidf_matrix = None
             self.category_encoded = None
+            self.moods_encoded = None
             self.combined_features = None
             self.similarity_matrix = None
             return
 
-        # Fill missing titles
+        # Fill missing titles and moods
         self.posts_df['title'] = self.posts_df['title'].fillna("Unknown")
+        self.posts_df['moods'] = self.posts_df['moods'].fillna("Unknown")
 
-        # Preprocess text
+        # Preprocess text for titles
         self.posts_df['processed_title'] = self.posts_df['title'].apply(self._preprocess_text)
 
-        # Check if all processed titles are empty (e.g., due to stop words)
-        if self.posts_df['processed_title'].str.strip().eq("").all():
-            print("Processed titles are empty. Skipping data preparation.")
-            self.title_tfidf_matrix = None
-            self.category_encoded = None
-            self.combined_features = None
-            self.similarity_matrix = None
-            return
-
-        # Vectorize titles
+        # Vectorize titles using TF-IDF
         self.tfidf = TfidfVectorizer()
         self.title_tfidf_matrix = self.tfidf.fit_transform(self.posts_df['processed_title'])
 
         # One-hot encode categories
         self.category_encoded = pd.get_dummies(self.posts_df['category_name'])
 
-        # Combine features
-        self.combined_features = hstack([self.title_tfidf_matrix, self.category_encoded.values])
+        # Process moods: treat moods as a string and vectorize
+        self.posts_df['processed_moods'] = self.posts_df['moods'].apply(lambda x: ' '.join(x.split(',')))  # Optional: treat as text
+        self.moods_tfidf_matrix = self.tfidf.fit_transform(self.posts_df['processed_moods'])
 
-        # Compute similarity matrix
+        # Combine all features (Title + Category + Moods)
+        self.combined_features = hstack([self.title_tfidf_matrix, self.category_encoded.values, 0.5 * self.moods_tfidf_matrix])
+
+        # Compute similarity matrix (cosine similarity)
         self.similarity_matrix = cosine_similarity(self.combined_features, self.combined_features)
-
 
     def _preprocess_text(self, text):
         import string
@@ -97,5 +93,28 @@ class ContentBasedRecommender:
         except Exception as e:
             print(f"Error in Content-Based Recommendation: {e}")
             return pd.DataFrame()
+
+    def _recommend_cold_start(self, user_mood, top_n):
+        # Normalize the user mood to lowercase
+        user_mood = user_mood.lower()
+
+        # Split the moods in the dataset into a list of individual moods
+        self.posts_df['moods_list'] = self.posts_df['moods'].apply(lambda x: [mood.strip().lower() for mood in x.split(',')] if isinstance(x, str) else [])
+
+        # Now check if the user mood is a substring of any post's moods list
+        matching_posts = self.posts_df[self.posts_df['moods_list'].apply(lambda moods: any(user_mood in mood for mood in moods))]
+
+        if matching_posts.empty:
+            print(f"No matching posts found for mood: {user_mood}")
+            return pd.DataFrame()
+
+        # Create a score column for the cold start recommendations (for now, we set it to a constant value, e.g., 1.0)
+        matching_posts['score'] = 1.0  # You can modify this logic to assign different scores based on additional criteria
+
+        # Return the top N recommendations, sorted by score (descending)
+        recommendations = matching_posts[['id', 'score']].sort_values(by='score', ascending=False).head(top_n)
+        
+        # Reset index and return
+        return recommendations.reset_index(drop=True)
 
 

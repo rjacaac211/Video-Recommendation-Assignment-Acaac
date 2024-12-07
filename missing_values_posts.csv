@@ -1,4 +1,4 @@
-id,title,category_name
-1,Post A,Category 1
-2,,Category 2
-3,Post C,
+id,title,category_name,moods
+1,Post A,Category 1,"happy, excited"
+2,,Category 2,"sad, contemplative"
+3,Post C,,

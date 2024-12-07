@@ -31,17 +31,60 @@ def preprocess_users(users_df):
     users_df.drop(columns=drop_cols, inplace=True)
     return users_df
 
+def extract_moods(emotions):
+    moods = []
+
+    # If emotions is a dictionary, process its keys that contain lists, strings, or boolean values
+    if isinstance(emotions, dict):
+        for key, value in emotions.items():
+            if isinstance(value, list):  # If the value is a list (e.g., moods)
+                for item in value:
+                    moods.append(str(item) if isinstance(item, (str, int, float)) else str(item))
+            elif isinstance(value, dict):  # If the value is another dictionary, recursively extract moods
+                moods.extend(extract_moods(value))
+            elif isinstance(value, str):  # If the value is a string (e.g., initial, mid, final emotions)
+                moods.append(str(value))
+            elif isinstance(value, bool) and value:  # If the value is a boolean (True), add the key as a mood
+                moods.append(key)
+    elif isinstance(emotions, list):  # If emotions is a list, process it directly
+        for item in emotions:
+            moods.append(str(item) if isinstance(item, (str, int, float)) else str(item))
+
+    return ', '.join(moods) if moods else None
+
+
+
 def preprocess_posts(posts_df):
     posts_df['created_at'] = pd.to_datetime(posts_df['created_at'], errors='coerce')
+
+    # Extract category data
     category_df = pd.json_normalize(posts_df['category'])
     posts_df = pd.concat([posts_df.drop(columns=['category']), category_df.add_prefix('category_')], axis=1)
+
+    # Extract moods from the 'emotions' field inside 'post_summary'
+    if 'post_summary' in posts_df.columns:
+        # Apply the extract_moods function to 'emotions' in 'post_summary'
+        posts_df['moods'] = posts_df['post_summary'].apply(
+            lambda x: extract_moods(x.get('emotions', {})) if isinstance(x, dict) and 'emotions' in x else None
+        )
+    else:
+        posts_df['moods'] = None  # If 'post_summary' doesn't exist, set 'moods' to None
+
+    # Fill missing moods with 'Unknown'
+    posts_df['moods'].fillna("Unknown", inplace=True)
+
+    # Drop unnecessary columns
     drop_cols = [
         'slug', 'identifier', 'comment_count', 'exit_count',
         'thumbnail_url', 'gif_thumbnail_url', 'picture_url',
         'post_summary', 'category_count', 'category_description', 'category_image_url'
     ]
     posts_df.drop(columns=drop_cols, inplace=True)
+
     return posts_df
+
+
+
 
 def preprocess_interactions(viewed, liked, inspired, rated):
     for df, interaction in zip(

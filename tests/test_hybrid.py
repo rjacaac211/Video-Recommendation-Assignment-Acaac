@@ -28,7 +28,7 @@ hybrid_recommender = HybridRecommender(content_recommender, collaborative_recomm
 print("\nTesting Hybrid Recommender with a valid user_id and content-based valid post_id:")
 if valid_content_post_id:
     try:
-        hybrid_recommendations = hybrid_recommender.recommend_hybrid(valid_content_post_id, top_n=5)
+        hybrid_recommendations = hybrid_recommender.recommend_hybrid(valid_content_post_id, top_n=10)
         print(f"Hybrid Recommendations for content-based valid post_id {valid_content_post_id}:\n{hybrid_recommendations}")
     except Exception as e:
         print(f"Error generating hybrid recommendations for valid content-based post_id: {e}")
@@ -39,7 +39,7 @@ else:
 valid_user_id = 1  # Replace with a valid user ID from your dataset
 print(f"\nTesting Hybrid Recommender with valid user_id: {valid_user_id}")
 try:
-    hybrid_recommendations = hybrid_recommender.recommend_hybrid(valid_user_id, top_n=5)
+    hybrid_recommendations = hybrid_recommender.recommend_hybrid(valid_user_id, top_n=10)
     print(f"Hybrid Recommendations for user_id {valid_user_id}:\n{hybrid_recommendations}")
 except Exception as e:
     print(f"Error generating hybrid recommendations: {e}")
@@ -48,7 +48,7 @@ except Exception as e:
 invalid_user_id = 9999  # Use an ID that doesn't exist in the interactions dataset
 print(f"\nTesting Hybrid Recommender with invalid user_id: {invalid_user_id}")
 try:
-    hybrid_recommendations = hybrid_recommender.recommend_hybrid(invalid_user_id, top_n=5)
+    hybrid_recommendations = hybrid_recommender.recommend_hybrid(invalid_user_id, top_n=10)
     print(f"Hybrid Recommendations for user_id {invalid_user_id}:\n{hybrid_recommendations}")
 except Exception as e:
     print(f"Error generating hybrid recommendations: {e}")
@@ -62,7 +62,7 @@ empty_content_recommender = ContentBasedRecommender(empty_content_csv_path)
 hybrid_with_empty_content = HybridRecommender(empty_content_recommender, collaborative_recommender)
 
 try:
-    hybrid_recommendations_empty = hybrid_with_empty_content.recommend_hybrid(valid_user_id, top_n=5)
+    hybrid_recommendations_empty = hybrid_with_empty_content.recommend_hybrid(valid_user_id, top_n=10)
     print(f"Hybrid Recommendations with empty dataset:\n{hybrid_recommendations_empty}")
 except Exception as e:
     print(f"Error generating hybrid recommendations with empty dataset: {e}")
