@@ -56,25 +56,3 @@ class ColdStartRecommender:
             ascending=False
         ).head(top_n)
         return recommended_posts[['id', 'title', 'category_name', 'total_views', 'average_rating_features']]
-
-
-# Example Usage
-if __name__ == "__main__":
-    cold_start = ColdStartRecommender("../data/processed/all_posts_with_features.csv")
-
-    # Recommendations by category
-    category_id = 1  # Replace with a valid category ID
-    category_recommendations = cold_start.recommend_by_category(category_id, top_n=10)
-    print("\nRecommendations by Category:")
-    print(category_recommendations)
-
-    # Recommendations by popularity
-    popularity_recommendations = cold_start.recommend_by_popularity(top_n=10)
-    print("\nRecommendations by Popularity:")
-    print(popularity_recommendations)
-
-    # Recommendations by mood
-    user_mood = "motivated"  # Replace with a user mood
-    mood_recommendations = cold_start.recommend_by_mood(user_mood, top_n=10)
-    print("\nRecommendations by Mood:")
-    print(mood_recommendations)

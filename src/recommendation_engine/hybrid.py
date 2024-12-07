@@ -50,23 +50,3 @@ class HybridRecommender:
         recommendations = recommendations.sort_values(by='score', ascending=False).head(top_n)
 
         return recommendations
-
-
-# Example Usage
-if __name__ == "__main__":
-    # Initialize individual models
-    content_model = ContentBasedRecommender("../data/processed/all_posts_with_features.csv")
-    collaborative_model = CollaborativeFilteringRecommender("../data/processed/interaction_df.csv")
-
-    # Build necessary matrices
-    content_model.build_similarity_matrix()
-    collaborative_model.compute_similarity()
-
-    # Initialize Hybrid Recommender
-    hybrid_model = HybridRecommender(content_model, collaborative_model)
-
-    # Get recommendations for a user
-    user_id = 1  # Replace with a valid user ID
-    recommendations = hybrid_model.recommend_posts(user_id, top_n=10)
-    print(f"Hybrid Recommendations for User {user_id}:")
-    print(recommendations)

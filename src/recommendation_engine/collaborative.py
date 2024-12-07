@@ -44,6 +44,10 @@ class CollaborativeFilteringRecommender:
         if self.similarity_matrix is None:
             self.compute_similarity()
 
+        # Ensure the user ID exists in the user-post matrix
+        if user_id not in self.user_post_matrix.index:
+            raise ValueError(f"User ID {user_id} not found in the interaction data.")
+
         # Get the posts the user has interacted with
         user_interactions = self.user_post_matrix.loc[user_id]
         interacted_posts = user_interactions[user_interactions > 0].index.tolist()
@@ -66,11 +70,3 @@ class CollaborativeFilteringRecommender:
         # Sort recommendations by score in descending order
         recommended_posts = sorted(recommendation_scores.items(), key=lambda x: x[1], reverse=True)[:top_n]
         return [post_id for post_id, _ in recommended_posts]
-
-
-# Example Usage
-if __name__ == "__main__":
-    recommender = CollaborativeFilteringRecommender("../data/processed/interaction_df.csv")
-    user_id = 1  # Replace with a valid user ID
-    recommendations = recommender.recommend_posts(user_id)
-    print(f"Collaborative Filtering Recommendations for User {user_id}: {recommendations}")

@@ -17,7 +17,7 @@ class ContentBasedRecommender:
         """
         Preprocess the post titles for TF-IDF vectorization.
         """
-        # Handle missing titles
+        # Handle missing titles and convert to lowercase
         self.posts_df['title'] = self.posts_df['title'].fillna("Unknown").str.lower()
 
     def compute_similarity(self):
@@ -42,7 +42,10 @@ class ContentBasedRecommender:
             self.compute_similarity()
 
         # Find the index of the given post ID
-        post_idx = self.posts_df[self.posts_df['id'] == post_id].index[0]
+        try:
+            post_idx = self.posts_df[self.posts_df['id'] == post_id].index[0]
+        except IndexError:
+            raise ValueError(f"Post ID {post_id} not found in the dataset.")
 
         # Retrieve similarity scores
         similarity_scores = list(enumerate(self.similarity_matrix[post_idx]))
@@ -53,11 +56,3 @@ class ContentBasedRecommender:
         # Retrieve post IDs of the most similar posts
         similar_post_ids = [self.posts_df.iloc[i[0]]['id'] for i in similarity_scores]
         return similar_post_ids
-
-
-# Example Usage
-if __name__ == "__main__":
-    recommender = ContentBasedRecommender("../data/processed/all_posts_with_features.csv")
-    post_id = 11  # Replace with a valid post ID
-    recommendations = recommender.get_similar_posts(post_id)
-    print(f"Content-Based Recommendations for Post {post_id}: {recommendations}")
