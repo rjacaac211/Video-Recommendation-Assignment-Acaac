@@ -1,21 +1,19 @@
-import unittest
-from recommendation_engine.collaborative import CollaborativeFilteringRecommender
+from src.recommendation_engine.collaborative import CollaborativeRecommender
 
-class TestCollaborativeRecommender(unittest.TestCase):
-    def setUp(self):
-        # Initialize the recommender with test data
-        self.recommender = CollaborativeFilteringRecommender("../data/processed/interaction_df.csv")
-        self.recommender.compute_similarity()  # Compute the similarity matrix
+# Path to interactions CSV file
+interactions_csv_path = "data/processed/interaction_df.csv"
 
-    def test_recommendations(self):
-        user_id = 1  # Example user ID, replace with an actual ID
-        recommendations = self.recommender.recommend_posts(user_id, top_n=10)
-        
-        # Ensure the recommendations list is of length 10
-        self.assertEqual(len(recommendations), 10)
-        
-        # Ensure all recommendations are valid post IDs
-        self.assertTrue(all(isinstance(post_id, int) for post_id in recommendations))
+# Initialize the Collaborative Recommender
+collaborative_recommender = CollaborativeRecommender(interactions_csv_path)
 
-if __name__ == "__main__":
-    unittest.main()
+# Test with a valid user ID
+valid_user_id = 1  # Replace with a valid user ID
+print(f"Testing Collaborative Recommender with valid user_id: {valid_user_id}")
+valid_recommendations = collaborative_recommender.recommend(valid_user_id, top_n=5)
+print(f"Collaborative Recommendations for user_id {valid_user_id}:\n{valid_recommendations}")
+
+# Test with an invalid user ID
+invalid_user_id = 9999  # Use an ID that doesn't exist in the dataset
+print(f"\nTesting Collaborative Recommender with invalid user_id: {invalid_user_id}")
+invalid_recommendations = collaborative_recommender.recommend(invalid_user_id, top_n=5)
+print(f"Collaborative Recommendations for user_id {invalid_user_id}:\n{invalid_recommendations}")

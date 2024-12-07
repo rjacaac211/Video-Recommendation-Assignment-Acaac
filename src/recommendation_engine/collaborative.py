@@ -1,72 +1,63 @@
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 
+class CollaborativeRecommender:
+    def __init__(self, interactions_path):
+        print(f"Loading interactions data from {interactions_path}...")
+        self.interactions_df = pd.read_csv(interactions_path)
+        print(f"Interactions DataFrame Loaded: {self.interactions_df.shape} rows, columns: {self.interactions_df.columns.tolist()}")
+        print(self.interactions_df.head())  # Display the first few rows for validation
+        self._prepare_data()
 
-class CollaborativeFilteringRecommender:
-    def __init__(self, interaction_data_path):
-        """
-        Initialize the Collaborative Filtering Recommender.
-        Args:
-            interaction_data_path (str): Path to the CSV file containing user-post interaction data.
-        """
-        self.interaction_df = pd.read_csv(interaction_data_path)
-        self.user_post_matrix = None
-        self.similarity_matrix = None
+    def _prepare_data(self):
+        # Validate data structure
+        if 'user_id' not in self.interactions_df.columns or 'post_id' not in self.interactions_df.columns:
+            raise ValueError("Interaction data must contain 'user_id' and 'post_id' columns.")
 
-    def build_user_post_matrix(self):
-        """
-        Build the user-post interaction matrix.
-        """
-        self.user_post_matrix = self.interaction_df.pivot_table(
-            index="user_id",
-            columns="post_id",
-            values="interaction_type",
+        # Handle missing or invalid data
+        self.interactions_df = self.interactions_df.dropna(subset=['user_id', 'post_id'])
+        self.interactions_df['user_id'] = self.interactions_df['user_id'].astype(int)
+        self.interactions_df['post_id'] = self.interactions_df['post_id'].astype(int)
+
+        # Create user-post interaction matrix
+        print("Creating User-Post Interaction Matrix...")
+        self.user_post_matrix = self.interactions_df.pivot_table(
+            index='user_id', columns='post_id', values='interaction_type',
             aggfunc=lambda x: 1 if len(x) > 0 else 0
         ).fillna(0)
+        print(f"User-Post Matrix Shape: {self.user_post_matrix.shape}")
+        print("User-Post Interaction Matrix (First Few Rows):")
+        print(self.user_post_matrix.head())
 
-    def compute_similarity(self):
-        """
-        Compute item-item similarity matrix based on the user-post interaction matrix.
-        """
-        if self.user_post_matrix is None:
-            self.build_user_post_matrix()
-        self.similarity_matrix = cosine_similarity(self.user_post_matrix.T)
+        # Compute item-item similarity
+        print("Computing Item-Item Similarity...")
+        self.item_similarity_matrix = cosine_similarity(self.user_post_matrix.T)
+        print(f"Item-Item Similarity Matrix Shape: {self.item_similarity_matrix.shape}")
 
-    def recommend_posts(self, user_id, top_n=10):
-        """
-        Recommend posts for a given user based on collaborative filtering.
-        Args:
-            user_id (int): The ID of the user to generate recommendations for.
-            top_n (int): Number of posts to recommend.
-        Returns:
-            list: List of recommended post IDs.
-        """
-        if self.similarity_matrix is None:
-            self.compute_similarity()
-
-        # Ensure the user ID exists in the user-post matrix
+    def recommend(self, user_id, top_n=10):
+        print(f"Generating recommendations for user_id: {user_id}")
         if user_id not in self.user_post_matrix.index:
-            raise ValueError(f"User ID {user_id} not found in the interaction data.")
+            print(f"User ID {user_id} not found in user-post interaction matrix.")
+            return pd.DataFrame(columns=["post_id", "score"])
 
-        # Get the posts the user has interacted with
         user_interactions = self.user_post_matrix.loc[user_id]
         interacted_posts = user_interactions[user_interactions > 0].index.tolist()
 
-        # Calculate recommendation scores
-        recommendation_scores = {}
-        for post in interacted_posts:
-            # Get similarity scores for this post
-            post_idx = self.user_post_matrix.columns.get_loc(post)
-            similar_posts = self.similarity_matrix[post_idx]
+        if not interacted_posts:
+            print(f"No interactions found for User ID {user_id}.")
+            return pd.DataFrame(columns=["post_id", "score"])
 
-            # Add scores for non-interacted posts
-            for i, score in enumerate(similar_posts):
-                post_id = self.user_post_matrix.columns[i]
-                if post_id not in interacted_posts:
-                    if post_id not in recommendation_scores:
-                        recommendation_scores[post_id] = 0
-                    recommendation_scores[post_id] += score
+        # Compute scores for all posts
+        scores = {}
+        for post_id in interacted_posts:
+            post_idx = self.user_post_matrix.columns.get_loc(post_id)
+            similar_posts = self.item_similarity_matrix[post_idx]
+            for idx, score in enumerate(similar_posts):
+                if self.user_post_matrix.columns[idx] not in interacted_posts:
+                    scores[self.user_post_matrix.columns[idx]] = scores.get(self.user_post_matrix.columns[idx], 0) + score
 
-        # Sort recommendations by score in descending order
-        recommended_posts = sorted(recommendation_scores.items(), key=lambda x: x[1], reverse=True)[:top_n]
-        return [post_id for post_id, _ in recommended_posts]
+        # Sort scores and retrieve top recommendations
+        recommendations = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:top_n]
+        recommendations_df = pd.DataFrame(recommendations, columns=["post_id", "score"])
+        print(f"Top-{top_n} Recommendations for user_id {user_id}:\n{recommendations_df}")
+        return recommendations_df

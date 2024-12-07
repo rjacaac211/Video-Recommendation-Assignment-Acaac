@@ -1,52 +1,66 @@
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import MinMaxScaler
-from content_based import ContentBasedRecommender
-from collaborative import CollaborativeFilteringRecommender
-
 
 class HybridRecommender:
     def __init__(self, content_model, collaborative_model, weight_content=0.3, weight_collaborative=0.7):
-        """
-        Initialize the Hybrid Recommender.
-        Args:
-            content_model (ContentBasedRecommender): An instance of Content-Based Recommender.
-            collaborative_model (CollaborativeFilteringRecommender): An instance of Collaborative Filtering Recommender.
-            weight_content (float): Weight for content-based recommendations.
-            weight_collaborative (float): Weight for collaborative recommendations.
-        """
         self.content_model = content_model
         self.collaborative_model = collaborative_model
         self.weight_content = weight_content
         self.weight_collaborative = weight_collaborative
 
-    def recommend_posts(self, user_id, top_n=10):
-        """
-        Generate recommendations using a hybrid approach.
-        Args:
-            user_id (int): The ID of the user to generate recommendations for.
-            top_n (int): Number of posts to recommend.
-        Returns:
-            pd.DataFrame: A DataFrame containing top-N recommended post IDs and scores.
-        """
-        # Get predictions from content-based and collaborative models
-        content_scores = self.content_model.predict_scores(user_id)
-        collaborative_scores = self.collaborative_model.predict_scores(user_id)
+    def recommend_hybrid(self, user_id, top_n=10):
+        print(f"Generating hybrid recommendations for user: {user_id}")
 
-        # Normalize scores
-        scaler = MinMaxScaler()
-        normalized_content = scaler.fit_transform(content_scores.reshape(-1, 1)).flatten()
-        normalized_collaborative = scaler.fit_transform(collaborative_scores.reshape(-1, 1)).flatten()
+        try:
+            # Get recommendations from both models
+            content_recommendations = self.content_model.recommend(user_id, top_n=top_n)
+            collaborative_recommendations = self.collaborative_model.recommend(user_id, top_n=top_n)
 
-        # Combine scores using weighted aggregation
-        hybrid_scores = (
-            self.weight_content * normalized_content +
-            self.weight_collaborative * normalized_collaborative
-        )
+            print(f"Content-Based Recommendations: {content_recommendations}")
+            print(f"Collaborative Recommendations: {collaborative_recommendations}")
 
-        # Sort posts by hybrid scores
-        post_ids = self.content_model.get_post_ids()
-        recommendations = pd.DataFrame({'post_id': post_ids, 'score': hybrid_scores})
-        recommendations = recommendations.sort_values(by='score', ascending=False).head(top_n)
+            # Check if content_recommendations is empty
+            content_df = content_recommendations if not content_recommendations.empty else pd.DataFrame(columns=["post_id", "score"])
 
-        return recommendations
+            # Handle collaborative recommendations (if list or DataFrame)
+            if isinstance(collaborative_recommendations, list):
+                collaborative_df = pd.DataFrame(
+                    collaborative_recommendations,
+                    columns=["post_id", "score"] if isinstance(collaborative_recommendations[0], tuple) else ["post_id"]
+                )
+                if "score" not in collaborative_df.columns:
+                    collaborative_df["score"] = 1.0  # Assign default score
+            else:
+                collaborative_df = collaborative_recommendations if not collaborative_recommendations.empty else pd.DataFrame(columns=["post_id", "score"])
+
+            # Add weights
+            if not content_df.empty:
+                content_df["weight"] = self.weight_content
+                content_df["weighted_score"] = content_df["score"] * content_df["weight"]
+
+            if not collaborative_df.empty:
+                collaborative_df["weight"] = self.weight_collaborative
+                collaborative_df["weighted_score"] = collaborative_df["score"] * collaborative_df["weight"]
+
+            # Combine DataFrames safely
+            combined_df = pd.concat([content_df, collaborative_df], ignore_index=True)
+
+            if combined_df.empty:
+                print("No recommendations available.")
+                return pd.DataFrame(columns=["post_id", "weighted_score"])
+
+            # Aggregate and sort recommendations
+            final_recommendations = (
+                combined_df.groupby("post_id", as_index=False)["weighted_score"]
+                .sum()
+                .sort_values(by="weighted_score", ascending=False)
+                .head(top_n)
+            )
+
+            print(f"Final Hybrid Recommendations: {final_recommendations}")
+            return final_recommendations
+
+        except Exception as e:
+            print(f"Error fetching recommendations: {e}")
+            raise
+
+

@@ -9,9 +9,6 @@ os.makedirs(PROCESSED_DIR, exist_ok=True)  # Ensure the processed directory exis
 
 # Helper Functions
 def load_json_to_df(filename):
-    """
-    Load a JSON file into a Pandas DataFrame.
-    """
     filepath = os.path.join(DATA_DIR, filename)
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"File not found: {filepath}")
@@ -19,11 +16,7 @@ def load_json_to_df(filename):
         data = json.load(f)
     return pd.DataFrame(data)
 
-
 def preprocess_users(users_df):
-    """
-    Clean and preprocess the users DataFrame.
-    """
     users_df.fillna({
         "instagram-url": "Not Provided",
         "youtube_url": "Not Provided",
@@ -38,11 +31,7 @@ def preprocess_users(users_df):
     users_df.drop(columns=drop_cols, inplace=True)
     return users_df
 
-
 def preprocess_posts(posts_df):
-    """
-    Clean and preprocess the posts DataFrame.
-    """
     posts_df['created_at'] = pd.to_datetime(posts_df['created_at'], errors='coerce')
     category_df = pd.json_normalize(posts_df['category'])
     posts_df = pd.concat([posts_df.drop(columns=['category']), category_df.add_prefix('category_')], axis=1)
@@ -54,11 +43,7 @@ def preprocess_posts(posts_df):
     posts_df.drop(columns=drop_cols, inplace=True)
     return posts_df
 
-
 def preprocess_interactions(viewed, liked, inspired, rated):
-    """
-    Consolidate interaction DataFrames into a single DataFrame.
-    """
     for df, interaction in zip(
         [viewed, liked, inspired, rated],
         ['viewed', 'liked', 'inspired', 'rated']
@@ -74,11 +59,7 @@ def preprocess_interactions(viewed, liked, inspired, rated):
     interaction_df.reset_index(drop=True, inplace=True)
     return interaction_df
 
-
 def aggregate_interactions(interaction_df):
-    """
-    Generate aggregated user and post features.
-    """
     user_features = interaction_df.groupby('user_id').agg(
         total_views=('interaction_type', lambda x: (x == 'viewed').sum()),
         total_likes=('interaction_type', lambda x: (x == 'liked').sum()),
@@ -97,21 +78,14 @@ def aggregate_interactions(interaction_df):
 
     return user_features, post_features
 
-
 def save_to_csv(df, filename):
-    """
-    Save a DataFrame to a CSV file.
-    """
     filepath = os.path.join(PROCESSED_DIR, filename)
     df.to_csv(filepath, index=False)
     print(f"Saved {filename} to {PROCESSED_DIR}")
 
-
 # Main Preprocessing Pipeline
 def main():
     print("Starting preprocessing pipeline...")
-    
-    # Load the files into DataFrames
     viewed_df = load_json_to_df("viewed_posts.json")
     liked_df = load_json_to_df("liked_posts.json")
     inspired_df = load_json_to_df("inspired_posts.json")
@@ -120,29 +94,25 @@ def main():
     all_users_df = load_json_to_df("all_users.json")
 
     print("Data loading complete.")
-    
-    # Preprocess users and posts
+
     all_users_df = preprocess_users(all_users_df)
     all_posts_df = preprocess_posts(all_posts_df)
-
-    # Preprocess interactions
     interaction_df = preprocess_interactions(viewed_df, liked_df, inspired_df, rated_df)
-
-    # Aggregate features
     user_features, post_features = aggregate_interactions(interaction_df)
 
-    # Merge post features with all_posts_df
     all_posts_with_features = pd.merge(
-        all_posts_df, post_features, left_on='id', right_on='post_id', how='left'
+        all_posts_df,
+        post_features.rename(columns={"average_rating": "average_rating_features"}),
+        left_on='id',
+        right_on='post_id',
+        how='left'
     ).fillna(0)
 
-    # Save processed data
     save_to_csv(interaction_df, "interaction_df.csv")
     save_to_csv(all_posts_with_features, "all_posts_with_features.csv")
     save_to_csv(all_users_df, "all_users_processed.csv")
 
     print("Preprocessing pipeline completed successfully!")
-
 
 if __name__ == "__main__":
     main()

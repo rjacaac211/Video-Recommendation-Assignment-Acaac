@@ -21,10 +21,10 @@ class ColdStartRecommender:
         """
         filtered_posts = self.posts_df[self.posts_df['category_id'] == category_id]
         recommended_posts = filtered_posts.sort_values(
-            by=['total_views', 'average_rating_features'],
+            by=['total_views', 'aggregated_average_rating'],
             ascending=False
         ).head(top_n)
-        return recommended_posts[['id', 'title', 'category_name', 'total_views', 'average_rating_features']]
+        return recommended_posts[['id', 'title', 'category_name', 'total_views', 'aggregated_average_rating']]
 
     def recommend_by_popularity(self, top_n=10):
         """
@@ -35,10 +35,10 @@ class ColdStartRecommender:
             pd.DataFrame: A DataFrame of recommended posts.
         """
         recommended_posts = self.posts_df.sort_values(
-            by=['total_views', 'total_likes', 'average_rating_features'],
+            by=['total_views', 'total_likes', 'aggregated_average_rating'],
             ascending=False
         ).head(top_n)
-        return recommended_posts[['id', 'title', 'category_name', 'total_views', 'total_likes', 'average_rating_features']]
+        return recommended_posts[['id', 'title', 'category_name', 'total_views', 'total_likes', 'aggregated_average_rating']]
 
     def recommend_by_mood(self, mood, top_n=10):
         """
@@ -52,7 +52,7 @@ class ColdStartRecommender:
         mood_column = 'mood_tags'  # Assumes posts have mood-related tags
         filtered_posts = self.posts_df[self.posts_df[mood_column].str.contains(mood, na=False, case=False)]
         recommended_posts = filtered_posts.sort_values(
-            by=['total_views', 'average_rating_features'],
+            by=['total_views', 'aggregated_average_rating'],
             ascending=False
         ).head(top_n)
-        return recommended_posts[['id', 'title', 'category_name', 'total_views', 'average_rating_features']]
+        return recommended_posts[['id', 'title', 'category_name', 'total_views', 'aggregated_average_rating']]
