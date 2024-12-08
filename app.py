@@ -1,8 +1,14 @@
+import os
+import sys
 from flask import Flask, request, jsonify
-from recommendation_engine.content_based import ContentBasedRecommender
-from recommendation_engine.collaborative import CollaborativeRecommender
-from recommendation_engine.hybrid import HybridRecommender
+from src.recommendation_engine.content_based import ContentBasedRecommender
+from src.recommendation_engine.collaborative import CollaborativeRecommender
+from src.recommendation_engine.hybrid import HybridRecommender
 
+# Add src directory to the Python path (if needed)
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
+# Initialize Flask app
 app = Flask(__name__)
 
 # Load preprocessed data paths
@@ -12,9 +18,11 @@ INTERACTION_DATA_PATH = "data/processed/interaction_df.csv"
 # Initialize recommendation systems
 content_recommender = ContentBasedRecommender(CONTENT_DATA_PATH)
 collaborative_recommender = CollaborativeRecommender(INTERACTION_DATA_PATH)
+
+# Initialize the Hybrid Recommender
 hybrid_recommender = HybridRecommender(
     content_model=content_recommender,
-    collaborative_model=collaborative_recommender,
+    collaborative_model=collaborative_recommender
 )
 
 @app.route('/feed', methods=['GET'])
@@ -27,17 +35,15 @@ def get_recommendations():
         return jsonify({"error": "Missing required parameter: username"}), 400
 
     try:
-        # Convert username to integer
+        # Convert username to integer (if possible)
         try:
             username = int(username)
         except ValueError:
             return jsonify({"error": "Invalid username format. It must be an integer."}), 400
 
-        # Debugging
         print(f"API Username Provided: {username} (Type: {type(username)})")
-        # print(f"User Interaction Matrix Index: {collaborative_recommender.user_post_matrix.index.tolist()}")
 
-        # Validate user existence
+        # Validate if user exists in the interaction matrix
         if collaborative_recommender.user_post_matrix.empty:
             print("Error: User-Post Interaction Matrix is empty.")
             return jsonify({"error": "User-Post Interaction Matrix is not loaded properly"}), 500
@@ -46,7 +52,7 @@ def get_recommendations():
             print(f"Error: Username {username} not found in the interaction matrix.")
             return jsonify({"error": f"No data found for user {username}"}), 404
 
-        # Generate recommendations
+        # Generate recommendations based on filters (category_id, mood)
         if category_id:
             recommendations = hybrid_recommender.recommend_hybrid(username, top_n=10)
             recommendations = recommendations[recommendations['category_id'] == category_id]
@@ -61,14 +67,13 @@ def get_recommendations():
             print(f"No recommendations available for user {username} with provided filters.")
             return jsonify({"error": "No recommendations available"}), 404
 
-        # Convert to JSON
+        # Convert recommendations to JSON
         response = recommendations.to_dict(orient="records")
         return jsonify({"recommendations": response})
 
     except Exception as e:
         print(f"Error encountered: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
 
 
 if __name__ == "__main__":

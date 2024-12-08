@@ -55,7 +55,7 @@ except Exception as e:
 
 # Test with edge case (empty dataset)
 print("\nTesting Hybrid Recommender with empty dataset:")
-empty_content_csv_path = "empty_posts.csv"
+empty_content_csv_path = "tests/outputs/empty_posts.csv"
 pd.DataFrame(columns=["id", "title", "category_name"]).to_csv(empty_content_csv_path, index=False)
 
 empty_content_recommender = ContentBasedRecommender(empty_content_csv_path)

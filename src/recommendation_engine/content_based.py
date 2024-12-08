@@ -6,6 +6,10 @@ from scipy.sparse import hstack
 class ContentBasedRecommender:
     def __init__(self, posts_path):
         self.posts_df = pd.read_csv(posts_path)
+
+        # Make sure to include category_id during data loading if it's not there already
+        self.posts_df['category_id'] = self.posts_df['category_id'].fillna(-1)  # Handle missing values if any
+        
         self._prepare_data()
 
     def _prepare_data(self):
@@ -64,7 +68,7 @@ class ContentBasedRecommender:
 
         return ' '.join(lemmatized)
 
-    def recommend(self, post_id, top_n=10):
+    def recommend(self, post_id, top_n=10, category_id=None, mood=None):
         if self.similarity_matrix is None:
             print("Similarity matrix not computed. Unable to provide recommendations.")
             return pd.DataFrame()
@@ -73,26 +77,41 @@ class ContentBasedRecommender:
             print(f"Post ID {post_id} not found in posts data.")
             return pd.DataFrame(columns=['post_id', 'score'])
 
-        print(f"Generating recommendations for post_id: {post_id}")
-        try:
-            # Locate the post index
-            post_index = self.posts_df[self.posts_df['id'] == post_id].index[0]
-            print(f"Post Index: {post_index}")
+        # Locate the post index
+        post_index = self.posts_df[self.posts_df['id'] == post_id].index[0]
 
-            # Calculate similarity scores
-            similarity_scores = list(enumerate(self.similarity_matrix[post_index]))
-            print(f"Similarity Scores (Raw): {similarity_scores[:5]}")
+        # Apply category and mood filtering before generating recommendations
+        filtered_posts = self.posts_df
 
-            # Sort and retrieve top N recommendations
-            similarity_scores = sorted(similarity_scores, key=lambda x: x[1], reverse=True)[1:top_n + 1]
-            recommendations = [self.posts_df.iloc[i[0]]['id'] for i in similarity_scores]
-            print(f"Top-{top_n} Recommendations: {recommendations}")
+        if category_id:
+            # Check if category_name column exists and filter accordingly
+            if 'category_name' in filtered_posts.columns:
+                filtered_posts = filtered_posts[filtered_posts['category_name'] == category_id]  # Filter by category_name
+            else:
+                print("category_name column is not available for filtering.")
+                return pd.DataFrame()
 
-            return pd.DataFrame({'post_id': recommendations, 'score': [score for _, score in similarity_scores]})
+        if mood:
+            filtered_posts = filtered_posts[filtered_posts['moods'].str.contains(mood, case=False, na=False)]
 
-        except Exception as e:
-            print(f"Error in Content-Based Recommendation: {e}")
-            return pd.DataFrame()
+        if filtered_posts.empty:
+            print(f"No posts found matching the category or mood filters.")
+            return pd.DataFrame(columns=['post_id', 'score'])
+
+        # Recalculate the similarity matrix for the filtered posts
+        filtered_title_tfidf_matrix = self.tfidf.transform(filtered_posts['processed_title'])
+        filtered_moods_tfidf_matrix = self.tfidf.transform(filtered_posts['processed_moods'])
+        filtered_combined_features = hstack([filtered_title_tfidf_matrix, self.category_encoded.loc[filtered_posts.index].values, 0.5 * filtered_moods_tfidf_matrix])
+        filtered_similarity_matrix = cosine_similarity(filtered_combined_features, filtered_combined_features)
+
+        # Calculate similarity scores for the filtered posts
+        similarity_scores = list(enumerate(filtered_similarity_matrix[post_index]))
+
+        # Sort and retrieve top N recommendations
+        similarity_scores = sorted(similarity_scores, key=lambda x: x[1], reverse=True)[1:top_n + 1]
+        recommendations = [filtered_posts.iloc[i[0]]['id'] for i in similarity_scores]
+
+        return pd.DataFrame({'post_id': recommendations, 'score': [score for _, score in similarity_scores]})
 
     def _recommend_cold_start(self, user_mood, top_n):
         # Normalize the user mood to lowercase
@@ -116,5 +135,3 @@ class ContentBasedRecommender:
         
         # Reset index and return
         return recommendations.reset_index(drop=True)
-
-

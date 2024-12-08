@@ -24,7 +24,7 @@ invalid_recommendations = content_recommender.recommend(invalid_post_id, top_n=1
 print(f"Recommendations for invalid post_id {invalid_post_id}:\n{invalid_recommendations}")
 
 # 3. Test with an empty dataset
-empty_posts_path = "empty_posts.csv"
+empty_posts_path = "tests/outputs/empty_posts.csv"
 pd.DataFrame(columns=["id", "title", "category_name", "moods"]).to_csv(empty_posts_path, index=False)  # Include moods column
 
 empty_recommender = ContentBasedRecommender(empty_posts_path)
@@ -41,7 +41,7 @@ data_with_missing_values = pd.DataFrame({
     "category_name": ["Category 1", "Category 2", None],  # Missing category for post_id 3
     "moods": ["happy, excited", "sad, contemplative", None]  # Missing moods for post_id 3
 })
-data_with_missing_values_path = "missing_values_posts.csv"
+data_with_missing_values_path = "tests/outputs/missing_values_posts.csv"
 data_with_missing_values.to_csv(data_with_missing_values_path, index=False)
 
 missing_values_recommender = ContentBasedRecommender(data_with_missing_values_path)
@@ -58,7 +58,7 @@ data_with_duplicates = pd.DataFrame({
     "category_name": ["Category 1", "Category 2", "Category 3"],
     "moods": ["energetic, motivated", "calm, reflective", "unique"]
 })
-data_with_duplicates_path = "duplicates_posts.csv"
+data_with_duplicates_path = "tests/outputs/duplicates_posts.csv"
 data_with_duplicates.to_csv(data_with_duplicates_path, index=False)
 
 duplicates_recommender = ContentBasedRecommender(data_with_duplicates_path)
@@ -75,7 +75,7 @@ data_with_moods = pd.DataFrame({
     "category_name": ["Category A", "Category B", "Category C"],
     "moods": ["energetic, motivated", "calm, peaceful", "motivational, inspiring"]
 })
-data_with_moods_path = "moods_posts.csv"
+data_with_moods_path = "tests/outputs/moods_posts.csv"
 data_with_moods.to_csv(data_with_moods_path, index=False)
 
 moods_recommender = ContentBasedRecommender(data_with_moods_path)
