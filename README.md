@@ -8,6 +8,7 @@ This project implements a recommendation system for the Socialverse platform usi
   - [Start the Flask Application](#2-start-the-flask-application)
   - [Access the API](#3-access-the-api)
 - [Usage](#usage)
+- [Stages of Development](#stages-of-development)
 - [Data Preprocessing](#1-data-preprocessing)
 - [Algorithm Development](#2-algorithm-development)
   - [Content-Based Filtering](#content-based-filtering)
@@ -58,6 +59,17 @@ Once the application is running, you can interact with the API by sending a requ
 ```
 http://127.0.0.1:5000/feed?username=211&category_id=1&mood=passion
 ```
+
+## Stages of Development
+
+This project was developed in multiple stages. Below is a breakdown of the key stages and the corresponding sections in this document:
+
+1. **Data Preprocessing** – Involves cleaning and transforming raw data into a usable format.
+2. **Algorithm Development** – Focuses on creating the core recommendation algorithms using content-based, collaborative, and hybrid approaches.
+3. **Evaluation Metrics** – Describes the methods used to evaluate the performance of the recommendation system.
+4. **API Development** – Details the development of the API that allows interaction with the recommendation system.
+   
+Each stage builds upon the previous one, culminating in the deployment of the recommendation system with a working API.
 
 ## 1. Data Preprocessing
 
