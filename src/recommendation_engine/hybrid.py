@@ -16,7 +16,7 @@ class HybridRecommender:
             print(f"Content-Based Recommendations:\n{content_recommendations}")
             print(f"Collaborative Recommendations:\n{collaborative_recommendations}")
 
-            # Handle content-based recommendations
+            # Handle content-based recommendations (if empty, return empty DataFrame)
             content_df = content_recommendations if not content_recommendations.empty else pd.DataFrame(columns=["post_id", "score"])
 
             # Handle collaborative recommendations
@@ -26,7 +26,7 @@ class HybridRecommender:
                     columns=["post_id", "score"] if isinstance(collaborative_recommendations[0], tuple) else ["post_id"]
                 )
                 if "score" not in collaborative_df.columns:
-                    collaborative_df["score"] = 1.0  # Assign default score
+                    collaborative_df["score"] = 1.0  # Assign default score if missing
             else:
                 collaborative_df = collaborative_recommendations if not collaborative_recommendations.empty else pd.DataFrame(columns=["post_id", "score"])
 
@@ -57,7 +57,7 @@ class HybridRecommender:
                 collaborative_df["weighted_score"] = collaborative_df["score"] * collaborative_df["weight"]
 
             # Combine DataFrames safely
-            combined_df = pd.concat([content_df, collaborative_df], ignore_index=True)
+            combined_df = pd.concat([content_df.dropna(axis=1, how='all'), collaborative_df.dropna(axis=1, how='all')], ignore_index=True)
 
             if combined_df.empty:
                 return pd.DataFrame(columns=["post_id", "weighted_score"])
@@ -76,5 +76,3 @@ class HybridRecommender:
         except Exception as e:
             print(f"Error fetching recommendations: {e}")
             raise
-
-

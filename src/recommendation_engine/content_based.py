@@ -2,14 +2,38 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse import hstack
+import string
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import TreebankWordTokenizer
+from nltk.stem import WordNetLemmatizer
+
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy.sparse import hstack
+import string
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import TreebankWordTokenizer
+from nltk.stem import WordNetLemmatizer
 
 class ContentBasedRecommender:
     def __init__(self, posts_path):
         self.posts_df = pd.read_csv(posts_path)
 
-        # Make sure to include category_id during data loading if it's not there already
-        self.posts_df['category_id'] = self.posts_df['category_id'].fillna(-1)  # Handle missing values if any
-        
+        # Inspect the first few rows to verify correct loading
+        print(self.posts_df.head())
+
+        # Remove extra spaces from column names (if any)
+        self.posts_df.columns = self.posts_df.columns.str.strip()
+
+        # Ensure 'category_id' exists or add a default value column if missing
+        if 'category_id' not in self.posts_df.columns:
+            print("Warning: 'category_id' column is missing. Adding default category_id.")
+            self.posts_df['category_id'] = -1  # Set to a default value (e.g., -1)
+
+        self.posts_df['category_id'] = self.posts_df['category_id'].fillna(-1)  # Handle any missing category_id values
         self._prepare_data()
 
     def _prepare_data(self):
@@ -22,10 +46,6 @@ class ContentBasedRecommender:
             self.similarity_matrix = None
             return
 
-        # Fill missing titles and moods
-        self.posts_df['title'] = self.posts_df['title'].fillna("Unknown")
-        self.posts_df['moods'] = self.posts_df['moods'].fillna("Unknown")
-
         # Preprocess text for titles
         self.posts_df['processed_title'] = self.posts_df['title'].apply(self._preprocess_text)
 
@@ -36,8 +56,9 @@ class ContentBasedRecommender:
         # One-hot encode categories
         self.category_encoded = pd.get_dummies(self.posts_df['category_name'])
 
-        # Process moods: treat moods as a string and vectorize
-        self.posts_df['processed_moods'] = self.posts_df['moods'].apply(lambda x: ' '.join(x.split(',')))  # Optional: treat as text
+        # Process moods: handle NaN or non-string values and vectorize
+        self.posts_df['moods'] = self.posts_df['moods'].fillna("").astype(str)  # Ensure all values are strings
+        self.posts_df['processed_moods'] = self.posts_df['moods'].apply(lambda x: ' '.join(x.split(',')))  # Treat as text
         self.moods_tfidf_matrix = self.tfidf.fit_transform(self.posts_df['processed_moods'])
 
         # Combine all features (Title + Category + Moods)
@@ -47,22 +68,18 @@ class ContentBasedRecommender:
         self.similarity_matrix = cosine_similarity(self.combined_features, self.combined_features)
 
     def _preprocess_text(self, text):
-        import string
-        from nltk.corpus import stopwords
-        from nltk.tokenize import TreebankWordTokenizer
-        from nltk.stem import WordNetLemmatizer
-        import nltk
+        # Ensure the text is a string, and handle NaN or None values
+        if not isinstance(text, str):
+            text = str(text) if text is not None else ""  # Convert to empty string if None
 
-        nltk.download('punkt', quiet=True)
-        nltk.download('stopwords', quiet=True)
-        nltk.download('wordnet', quiet=True)
-
+        # Text cleaning and tokenization
+        text = text.lower().translate(str.maketrans('', '', string.punctuation))
+        
+        # Tokenization and Lemmatization
         tokenizer = TreebankWordTokenizer()
         lemmatizer = WordNetLemmatizer()
         stop_words = set(stopwords.words('english'))
 
-        # Text cleaning and tokenization
-        text = text.lower().translate(str.maketrans('', '', string.punctuation))
         tokens = [word for word in tokenizer.tokenize(text) if word not in stop_words]
         lemmatized = [lemmatizer.lemmatize(token) for token in tokens]
 
@@ -112,6 +129,7 @@ class ContentBasedRecommender:
         recommendations = [filtered_posts.iloc[i[0]]['id'] for i in similarity_scores]
 
         return pd.DataFrame({'post_id': recommendations, 'score': [score for _, score in similarity_scores]})
+
 
     def _recommend_cold_start(self, user_mood, top_n):
         # Normalize the user mood to lowercase

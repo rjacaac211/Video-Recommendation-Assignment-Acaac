@@ -1,4 +1,10 @@
-from src.recommendation_engine.content_based import ContentBasedRecommender
+import sys
+import os
+
+# Add the src directory to the path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+
+from recommendation_engine.content_based import ContentBasedRecommender
 import pandas as pd
 
 # Path to your posts CSV file
@@ -23,21 +29,26 @@ print(f"Testing invalid post_id: {invalid_post_id}")
 invalid_recommendations = content_recommender.recommend(invalid_post_id, top_n=10)
 print(f"Recommendations for invalid post_id {invalid_post_id}:\n{invalid_recommendations}")
 
-# 3. Test with an empty dataset
+# --- Start of Empty Dataset Test ---
+# Create an empty dataset with the required columns, including 'category_id'
 empty_posts_path = "tests/outputs/empty_posts.csv"
-pd.DataFrame(columns=["id", "title", "category_name", "moods"]).to_csv(empty_posts_path, index=False)  # Include moods column
+pd.DataFrame(columns=["id", "title", "category_id", "category_name", "moods"]).to_csv(empty_posts_path, index=False)  # Add category_id
 
+# Initialize ContentBasedRecommender with the empty dataset
 empty_recommender = ContentBasedRecommender(empty_posts_path)
+
 print("Testing with empty dataset:")
 
-# Generate recommendations
+# Generate recommendations (this should handle the case with no posts in the dataset)
 empty_recommendations = empty_recommender.recommend(1, top_n=10)
 print(f"Recommendations from empty dataset:\n{empty_recommendations}")
+# --- End of Empty Dataset Test ---
 
 # 4. Test with a dataset containing missing values
 data_with_missing_values = pd.DataFrame({
     "id": [1, 2, 3],
     "title": ["Post A", None, "Post C"],  # Missing title for post_id 2
+    "category_id": [101, None, 103],  # Adding category_id with missing values
     "category_name": ["Category 1", "Category 2", None],  # Missing category for post_id 3
     "moods": ["happy, excited", "sad, contemplative", None]  # Missing moods for post_id 3
 })
@@ -50,6 +61,7 @@ print("Testing with missing values dataset:")
 # Test with a valid post_id
 missing_values_recommendations = missing_values_recommender.recommend(1, top_n=10)
 print(f"Recommendations with missing values dataset:\n{missing_values_recommendations}")
+
 
 # 5. Test with a dataset containing duplicate titles
 data_with_duplicates = pd.DataFrame({
@@ -89,4 +101,3 @@ print(f"Recommendations based on moods:\n{moods_recommendations}")
 new_user_mood = "passion"  # Assuming the new user selects this mood
 recommendations = content_recommender._recommend_cold_start(user_mood=new_user_mood, top_n=10)
 print(f"Cold Start Recommendations for mood '{new_user_mood}':\n{recommendations}")
-

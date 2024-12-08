@@ -53,17 +53,28 @@ def get_recommendations():
             return jsonify({"error": f"No data found for user {username}"}), 404
 
         # Generate recommendations based on filters (category_id, mood)
-        if category_id:
-            recommendations = hybrid_recommender.recommend_hybrid(username, top_n=10)
+        recommendations = hybrid_recommender.recommend_hybrid(username, top_n=10)
+        print(f"Recommendations DataFrame columns: {recommendations.columns}")
+
+        # Check if 'category_id' is in the recommendations DataFrame
+        if 'category_id' not in recommendations.columns:
+            # Assign a default category_id if it's missing
+            print("Warning: 'category_id' column not found. Assigning default category_id.")
+            recommendations['category_id'] = 1  # You can adjust the default category as needed
+
+        # Filter by category_id if provided
+        if category_id is not None:
             recommendations = recommendations[recommendations['category_id'] == category_id]
-        elif mood:
-            recommendations = hybrid_recommender.recommend_hybrid(username, top_n=10)
-            recommendations = recommendations[recommendations['mood_tags'].str.contains(mood, na=False, case=False)]
-        else:
-            recommendations = hybrid_recommender.recommend_hybrid(username, top_n=10)
+
+        # Check if 'mood_tags' exists in the recommendations
+        if mood:
+            if 'mood_tags' in recommendations.columns:
+                recommendations = recommendations[recommendations['mood_tags'].str.contains(mood, na=False, case=False)]
+            else:
+                print(f"Warning: 'mood_tags' column not found in recommendations. Skipping mood filter.")
 
         # Check for empty recommendations
-        if recommendations.empty or recommendations is None:
+        if recommendations.empty:
             print(f"No recommendations available for user {username} with provided filters.")
             return jsonify({"error": "No recommendations available"}), 404
 

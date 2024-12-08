@@ -1,0 +1,4 @@
+id,title,category_id,category_name,moods
+1,Post A,101.0,Category 1,"happy, excited"
+2,,,Category 2,"sad, contemplative"
+3,Post C,103.0,,
